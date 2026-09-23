@@ -40,7 +40,7 @@ Aplikasi manajemen inventaris **fullstack** yang dibangun menggunakan FastAPI (B
 
 ## Screenshot
 
-*(Tambahkan screenshot aplikasi Anda di sini)*
+<img width="2880" height="1800" alt="Screenshot 2025-12-13 124830" src="https://github.com/user-attachments/assets/046df3f5-5a55-44e0-a51d-5e89506ec203" />
 
 ## Developer
 
