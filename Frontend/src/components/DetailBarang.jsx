@@ -1,21 +1,181 @@
-// DetailBarang.jsx
-import { useEffect, useState } from "react";
+import { useEffect, useState, useRef } from "react";
 import { useParams, useNavigate, useLocation } from "react-router-dom";
-import { motion } from "framer-motion";
+import { motion, AnimatePresence } from "framer-motion";
 import Swal from "sweetalert2";
 import "sweetalert2/dist/sweetalert2.min.css";
-import socketService from "../services/socket"; // Import socket service
+import socketService from "../services/socket";
+import { useAppTheme } from "../hooks/useTheme";
+
+// Import Lucide React icons
+import { 
+  ArrowLeft, 
+  Package, 
+  Tag, 
+  Calendar, 
+  Hash, 
+  FileText,
+  Trash2,
+  Edit3,
+  Eye,
+  Info,
+  CheckCircle,
+  AlertCircle,
+  XCircle,
+  Clock,
+  X
+} from "lucide-react";
 
 export default function DetailBarang() {
   const { id } = useParams();
   const navigate = useNavigate();
   const location = useLocation();
+  const { isDarkMode } = useAppTheme();
 
   const [barang, setBarang] = useState(null);
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState(null);
   const [selectedUnits, setSelectedUnits] = useState([]);
   const [socketConnected, setSocketConnected] = useState(false);
+  const [showImageModal, setShowImageModal] = useState(false);
+
+  // === Enhanced Background Particles for Dark Mode ===
+  const canvasRef = useRef(null);
+  const particlesRef = useRef(null);
+  const animationFrameIdRef = useRef(null);
+
+  // Fungsi untuk inisialisasi particles
+  const initParticles = () => {
+    if (!isDarkMode || !canvasRef.current) return;
+    
+    const canvas = canvasRef.current;
+    const ctx = canvas.getContext("2d");
+    
+    // Clear existing animation
+    if (animationFrameIdRef.current) {
+      cancelAnimationFrame(animationFrameIdRef.current);
+    }
+
+    const resize = () => {
+      canvas.width = window.innerWidth;
+      canvas.height = window.innerHeight;
+    };
+    
+    resize();
+    window.addEventListener("resize", resize);
+
+    // Initialize particles - SAMA DENGAN LOGIN.JSX
+    const particles = [];
+    for (let i = 0; i < 120; i++) {
+      particles.push({
+        x: Math.random() * canvas.width,
+        y: Math.random() * canvas.height,
+        r: Math.random() * 3 + 1,
+        dx: (Math.random() - 0.5) * 0.5,
+        dy: (Math.random() - 0.5) * 0.5,
+        opacity: Math.random() * 0.4 + 0.3,
+        pulse: Math.random() * Math.PI * 2,
+        pulseSpeed: Math.random() * 0.05 + 0.02
+      });
+    }
+    
+    particlesRef.current = particles;
+
+    const animate = () => {
+      if (!canvasRef.current || !particlesRef.current) return;
+      
+      ctx.clearRect(0, 0, canvas.width, canvas.height);
+      
+      particlesRef.current.forEach((p) => {
+        const pulseFactor = Math.sin(p.pulse) * 0.2 + 0.8;
+        p.pulse += p.pulseSpeed;
+        
+        ctx.save();
+        ctx.globalAlpha = p.opacity * pulseFactor;
+        ctx.fillStyle = "rgba(255, 255, 255, 1)";
+        
+        if (p.r > 2) {
+          const gradient = ctx.createRadialGradient(
+            p.x, p.y, 0,
+            p.x, p.y, p.r * 1.5
+          );
+          gradient.addColorStop(0, 'rgba(255, 255, 255, 0.8)');
+          gradient.addColorStop(0.5, 'rgba(255, 255, 255, 0.3)');
+          gradient.addColorStop(1, 'rgba(255, 255, 255, 0)');
+          ctx.fillStyle = gradient;
+        }
+        
+        ctx.beginPath();
+        ctx.arc(p.x, p.y, p.r * pulseFactor, 0, Math.PI * 2);
+        ctx.fill();
+        ctx.restore();
+
+        // Movement with boundary checking
+        p.x += p.dx;
+        p.y += p.dy;
+        
+        if (p.x < -p.r || p.x > canvas.width + p.r) p.dx *= -1;
+        if (p.y < -p.r || p.y > canvas.height + p.r) p.dy *= -1;
+        
+        p.x = Math.max(-p.r, Math.min(canvas.width + p.r, p.x));
+        p.y = Math.max(-p.r, Math.min(canvas.height + p.r, p.y));
+      });
+      
+      animationFrameIdRef.current = requestAnimationFrame(animate);
+    };
+    
+    animate();
+
+    return () => {
+      window.removeEventListener("resize", resize);
+    };
+  };
+
+  // Effect untuk particles - dijalankan setiap kali isDarkMode berubah atau komponen mount
+  useEffect(() => {
+    let cleanupResize;
+    
+    if (isDarkMode) {
+      // Delay sedikit untuk memastikan canvas sudah ter-render
+      const timer = setTimeout(() => {
+        cleanupResize = initParticles();
+      }, 100);
+      
+      return () => {
+        clearTimeout(timer);
+        if (cleanupResize) cleanupResize();
+        if (animationFrameIdRef.current) {
+          cancelAnimationFrame(animationFrameIdRef.current);
+        }
+      };
+    } else {
+      // Cleanup ketika light mode
+      if (animationFrameIdRef.current) {
+        cancelAnimationFrame(animationFrameIdRef.current);
+      }
+      if (canvasRef.current) {
+        const ctx = canvasRef.current.getContext("2d");
+        ctx.clearRect(0, 0, canvasRef.current.width, canvasRef.current.height);
+      }
+    }
+  }, [isDarkMode]);
+
+  // Effect tambahan untuk handle visibility change (tab switching)
+  useEffect(() => {
+    const handleVisibilityChange = () => {
+      if (document.visibilityState === 'visible' && isDarkMode) {
+        // Restart particles ketika tab menjadi visible lagi
+        setTimeout(() => {
+          initParticles();
+        }, 300);
+      }
+    };
+
+    document.addEventListener('visibilitychange', handleVisibilityChange);
+    
+    return () => {
+      document.removeEventListener('visibilitychange', handleVisibilityChange);
+    };
+  }, [isDarkMode]);
 
   // Setup Socket Connection
   useEffect(() => {
@@ -56,25 +216,12 @@ export default function DetailBarang() {
           icon: "info",
           timer: 3000,
           showConfirmButton: false,
+          background: isDarkMode ? '#1e293b' : '#ffffff',
+          color: isDarkMode ? '#f8fafc' : '#1f2937',
         });
       }
     }
   };
-
-  // Fallback sync jika socket terputus
-  useEffect(() => {
-    let syncInterval;
-
-    if (!socketConnected) {
-      syncInterval = setInterval(() => {
-        fetchBarang();
-      }, 30000);
-    }
-
-    return () => {
-      if (syncInterval) clearInterval(syncInterval);
-    };
-  }, [socketConnected, id]);
 
   // Fetch detail barang
   const fetchBarang = async () => {
@@ -106,24 +253,23 @@ export default function DetailBarang() {
     }
   }, [location.state]);
 
-  // Delete unit
+  // Delete unit (single)
   const handleDeleteUnit = async (unitKode) => {
     const result = await Swal.fire({
-      title: "Apakah Anda yakin?",
-      text: `Unit ${unitKode} akan dihapus dari daftar.`,
+      title: "Hapus Unit",
+      text: `Apakah Anda yakin ingin menghapus Unit ${unitKode}?`,
       icon: "warning",
       showCancelButton: true,
-      confirmButtonColor: "#d33",
-      cancelButtonColor: "#3085d6",
-      confirmButtonText: "Ya, hapus!",
+      confirmButtonText: "Ya, Hapus",
       cancelButtonText: "Batal",
+      background: isDarkMode ? '#1e293b' : '#ffffff',
+      color: isDarkMode ? '#f8fafc' : '#1f2937',
     });
 
     if (!result.isConfirmed) return;
 
     try {
       const token = localStorage.getItem("token");
-
       const res = await fetch(
         `http://localhost:8000/barang/${barang.id}/stok/${unitKode}`,
         {
@@ -133,23 +279,89 @@ export default function DetailBarang() {
       );
 
       if (!res.ok && res.status !== 404) {
-        const errData = await res.json();
-        throw new Error(errData.detail || "Gagal menghapus unit");
+        throw new Error("Gagal menghapus unit");
       }
 
       await fetchBarang();
+      Swal.fire({
+        title: "Berhasil!",
+        text: "Unit berhasil dihapus.",
+        icon: "success",
+        background: isDarkMode ? '#1e293b' : '#ffffff',
+        color: isDarkMode ? '#f8fafc' : '#1f2937',
+      });
+    } catch (err) {
+      Swal.fire({
+        title: "Gagal!",
+        text: err.message,
+        icon: "error",
+        background: isDarkMode ? '#1e293b' : '#ffffff',
+        color: isDarkMode ? '#f8fafc' : '#1f2937',
+      });
+    }
+  };
 
-      if (socketService.socket) {
-        socketService.socket.emit("unitDeleted", {
-          barangId: barang.id,
-          unitCode: unitKode,
-        });
+  // Bulk delete function
+  const handleDeleteSelected = async () => {
+    if (selectedUnits.length === 0) {
+      Swal.fire({
+        title: "Info",
+        text: "Tidak ada unit yang dipilih.",
+        icon: "info",
+        background: isDarkMode ? '#1e293b' : '#ffffff',
+        color: isDarkMode ? '#f8fafc' : '#1f2937',
+      });
+      return;
+    }
+
+    const result = await Swal.fire({
+      title: "Hapus Beberapa Unit",
+      text: `Apakah Anda yakin ingin menghapus ${selectedUnits.length} unit terpilih?`,
+      icon: "warning",
+      showCancelButton: true,
+      confirmButtonText: "Ya, Hapus Semua",
+      cancelButtonText: "Batal",
+      background: isDarkMode ? '#1e293b' : '#ffffff',
+      color: isDarkMode ? '#f8fafc' : '#1f2937',
+    });
+
+    if (!result.isConfirmed) return;
+
+    try {
+      const token = localStorage.getItem("token");
+      const res = await fetch(
+        `http://localhost:8000/barang/${barang.id}/stok/bulk-delete`,
+        {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json",
+            Authorization: `Bearer ${token}`,
+          },
+          body: JSON.stringify(selectedUnits),
+        }
+      );
+
+      if (!res.ok) {
+        throw new Error("Gagal menghapus unit");
       }
 
-      Swal.fire("Berhasil!", "Unit berhasil dihapus.", "success");
+      await fetchBarang();
+      setSelectedUnits([]);
+      Swal.fire({
+        title: "Berhasil!",
+        text: "Unit yang dipilih berhasil dihapus.",
+        icon: "success",
+        background: isDarkMode ? '#1e293b' : '#ffffff',
+        color: isDarkMode ? '#f8fafc' : '#1f2937',
+      });
     } catch (err) {
-      Swal.fire("Gagal!", err.message, "error");
-      fetchBarang();
+      Swal.fire({
+        title: "Gagal!",
+        text: err.message,
+        icon: "error",
+        background: isDarkMode ? '#1e293b' : '#ffffff',
+        color: isDarkMode ? '#f8fafc' : '#1f2937',
+      });
     }
   };
 
@@ -167,285 +379,482 @@ export default function DetailBarang() {
     }
   };
 
-  const handleDeleteSelected = async () => {
-    if (selectedUnits.length === 0) {
-      Swal.fire("Info", "Tidak ada unit yang dipilih.", "info");
-      return;
+  // Helper function untuk mendapatkan icon berdasarkan kondisi
+  const getConditionIcon = (kondisi) => {
+    switch (kondisi?.toLowerCase()) {
+      case "baik":
+        return <CheckCircle size={16} className="text-green-500" />;
+      case "kurang baik":
+        return <AlertCircle size={16} className="text-yellow-500" />;
+      case "rusak":
+        return <XCircle size={16} className="text-red-500" />;
+      default:
+        return <AlertCircle size={16} className="text-gray-500" />;
     }
+  };
 
-    const result = await Swal.fire({
-      title: "Apakah Anda yakin?",
-      text: `${selectedUnits.length} unit akan dihapus sekaligus.`,
-      icon: "warning",
-      showCancelButton: true,
-      confirmButtonColor: "#d33",
-      cancelButtonColor: "#3085d6",
-      confirmButtonText: "Ya, hapus semua!",
-      cancelButtonText: "Batal",
-    });
-
-    if (!result.isConfirmed) return;
-
-    try {
-      const token = localStorage.getItem("token");
-
-      const res = await fetch(
-        `http://localhost:8000/barang/${barang.id}/stok/bulk-delete`,
-        {
-          method: "POST",
-          headers: {
-            "Content-Type": "application/json",
-            Authorization: `Bearer ${token}`,
-          },
-          body: JSON.stringify(selectedUnits),
-        }
-      );
-
-      if (!res.ok) {
-        const errData = await res.json();
-        throw new Error(errData.detail || "Gagal menghapus unit");
-      }
-
-      await fetchBarang();
-
-      if (socketService.socket) {
-        socketService.socket.emit("unitsBulkDeleted", {
-          barangId: barang.id,
-          unitCodes: selectedUnits,
-        });
-      }
-
-      setSelectedUnits([]);
-      Swal.fire("Berhasil!", "Unit yang dipilih berhasil dihapus.", "success");
-    } catch (err) {
-      Swal.fire("Gagal!", err.message, "error");
-      fetchBarang();
+  // Helper function untuk mendapatkan icon berdasarkan status
+  const getStatusIcon = (status) => {
+    switch (status?.toLowerCase()) {
+      case "tersedia":
+        return <CheckCircle size={16} className="text-green-500" />;
+      case "dipinjam":
+        return <Clock size={16} className="text-blue-500" />;
+      default:
+        return <AlertCircle size={16} className="text-gray-500" />;
     }
+  };
+
+  // Function untuk membuka modal gambar
+  const openImageModal = () => {
+    setShowImageModal(true);
+  };
+
+  // Function untuk menutup modal gambar
+  const closeImageModal = () => {
+    setShowImageModal(false);
   };
 
   if (isLoading) {
     return (
-      <div className="min-h-screen bg-white flex items-center justify-center">
-        <p className="text-lg text-gray-600 animate-pulse">
-          Memuat data barang...
-        </p>
+      <div className={`min-h-screen flex items-center justify-center transition-colors duration-300 relative ${
+        isDarkMode ? "bg-slate-900" : "bg-gray-50"
+      }`}>
+        {/* Canvas untuk particles di dark mode */}
+        {isDarkMode && (
+          <canvas
+            ref={canvasRef}
+            className="absolute inset-0 pointer-events-none"
+            style={{ mixBlendMode: 'screen' }}
+          />
+        )}
+        <div className="flex flex-col items-center gap-3 relative z-10">
+          <div className={`animate-spin rounded-full h-12 w-12 border-b-2 ${
+            isDarkMode ? 'border-blue-500' : 'border-blue-600'
+          }`}></div>
+          <p className={`text-lg ${
+            isDarkMode ? "text-slate-300" : "text-gray-600"
+          }`}>
+            Memuat data barang...
+          </p>
+        </div>
       </div>
     );
   }
 
-  if (error || !barang || barang.detail === "Barang tidak ditemukan") {
+  if (error || !barang) {
     return (
-      <div className="min-h-screen bg-white flex flex-col items-center justify-center">
-        <p className="text-lg font-medium text-red-600">
-          {error || "Barang tidak ditemukan"}
-        </p>
-        <button
-          onClick={() => navigate("/barang")}
-          className="mt-4 bg-blue-600 text-white px-4 py-2 rounded hover:bg-blue-700 shadow"
-        >
-          Kembali
-        </button>
+      <div className={`min-h-screen flex flex-col items-center justify-center transition-colors duration-300 relative ${
+        isDarkMode ? "bg-slate-900" : "bg-gray-50"
+      }`}>
+        {/* Canvas untuk particles di dark mode */}
+        {isDarkMode && (
+          <canvas
+            ref={canvasRef}
+            className="absolute inset-0 pointer-events-none"
+            style={{ mixBlendMode: 'screen' }}
+          />
+        )}
+        <div className="text-center p-8 rounded-xl max-w-md relative z-10">
+          <div className={`p-4 rounded-full mx-auto mb-4 ${
+            isDarkMode ? 'bg-red-500/20' : 'bg-red-100'
+          }`}>
+            <Package size={48} className={`mx-auto ${
+              isDarkMode ? 'text-red-400' : 'text-red-500'
+            }`} />
+          </div>
+          <p className={`text-lg font-medium mb-4 ${
+            isDarkMode ? "text-red-400" : "text-red-600"
+          }`}>
+            {error || "Barang tidak ditemukan"}
+          </p>
+          <motion.button
+            whileHover={{ scale: 1.05 }}
+            whileTap={{ scale: 0.95 }}
+            onClick={() => navigate("/barang")}
+            className={`flex items-center gap-2 text-white px-6 py-3 rounded-lg ${
+              isDarkMode 
+                ? "bg-blue-600 hover:bg-blue-700" 
+                : "bg-blue-600 hover:bg-blue-700"
+            }`}
+          >
+            <ArrowLeft size={20} />
+            Kembali ke Daftar Barang
+          </motion.button>
+        </div>
       </div>
     );
   }
 
   return (
-    <div
-      className="min-h-screen bg-cover bg-center relative px-4 py-10"
-      style={{ backgroundImage: "url('/detail-bg.jpeg')" }}
-    >
-      <div className="absolute inset-0 bg-black bg-opacity-60" />
+    <div className={`min-h-screen ${isDarkMode ? "bg-slate-900" : "bg-gray-50"} p-4 relative`}>
+      {/* Canvas untuk particles di dark mode */}
+      {isDarkMode && (
+        <canvas
+          ref={canvasRef}
+          className="absolute inset-0 pointer-events-none"
+          style={{ mixBlendMode: 'screen' }}
+        />
+      )}
 
-      <motion.div
-        initial={{ y: 30, opacity: 0 }}
-        animate={{ y: 0, opacity: 1 }}
-        transition={{ duration: 0.6 }}
-        className="relative z-10 bg-white bg-opacity-95 backdrop-blur-lg p-8 rounded-2xl shadow-2xl w-full max-w-5xl mx-auto"
-      >
-        {/* Header tanpa status & refresh button */}
-        <div className="flex justify-between items-center mb-8">
+      <div className="max-w-6xl mx-auto relative z-10">
+        {/* Header - Diposisikan di tengah */}
+        <div className="flex items-center justify-center mb-8 relative">
+          {/* Tombol Kembali di kiri */}
           <motion.button
             whileHover={{ scale: 1.05 }}
             whileTap={{ scale: 0.95 }}
             onClick={() => navigate("/barang")}
-            className="bg-blue-600 hover:bg-blue-700 text-white px-4 py-2 rounded shadow transition text-sm"
+            className={`absolute left-0 flex items-center gap-2 px-4 py-2 rounded-lg ${
+              isDarkMode 
+                ? "bg-slate-700 hover:bg-slate-600 text-white" 
+                : "bg-white hover:bg-gray-100 text-gray-700 border"
+            }`}
           >
-            ← Kembali
+            <ArrowLeft size={18} />
+            Kembali
           </motion.button>
 
-          <div className="text-center flex-1">
-            <h2 className="text-3xl font-bold text-[#FF9913]">Detail Barang</h2>
+          {/* Judul di tengah */}
+          <div className="flex items-center gap-3">
+            <div className={`p-2 rounded-lg ${
+              isDarkMode ? 'bg-blue-500/20' : 'bg-blue-100'
+            }`}>
+              <Package size={24} className={
+                isDarkMode ? "text-blue-400" : "text-blue-600"
+              } />
+            </div>
+            <h1 className={`text-2xl font-bold ${
+              isDarkMode ? "text-white" : "text-gray-800"
+            }`}>
+              Detail Barang
+            </h1>
           </div>
         </div>
 
-        {/* Info barang */}
-        <div className="flex flex-col md:flex-row gap-10 items-center md:items-start">
-          {/* Foto */}
-          <div className="flex-shrink-0 flex justify-center w-full md:w-1/3">
-            {barang.foto ? (
-              <motion.img
-                initial={{ scale: 0.95 }}
-                animate={{ scale: 1 }}
-                transition={{ duration: 0.4 }}
+        {/* Main Content */}
+        <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+          {/* Left Column - Product Image and Basic Info */}
+          <div className="lg:col-span-1 space-y-6">
+            {/* Product Image */}
+            <div className={`rounded-xl p-6 ${
+              isDarkMode ? "bg-slate-800" : "bg-white"
+            } shadow-sm`}>
+              {barang.foto ? (
+                <motion.div
+                  whileHover={{ scale: 1.05 }}
+                  whileTap={{ scale: 0.95 }}
+                  className="cursor-pointer relative group"
+                  onClick={openImageModal}
+                >
+                  <img
+                    src={`http://localhost:8000/uploads/${barang.foto}`}
+                    alt={barang.nama_barang}
+                    className="w-full h-64 object-cover rounded-lg transition-all duration-300"
+                    onError={(e) => {
+                      e.target.onerror = null;
+                      e.target.src = "/default-image.png";
+                    }}
+                  />
+                  {/* Overlay dengan icon Eye seperti di KelolaProfile */}
+                  <div className="absolute inset-0 bg-black bg-opacity-0 group-hover:bg-opacity-30 rounded-lg flex items-center justify-center transition-all duration-300">
+                    <Eye 
+                      size={32} 
+                      className="text-white opacity-0 group-hover:opacity-100 transition-all duration-300 transform group-hover:scale-110" 
+                    />
+                  </div>
+                  {/* Tooltip */}
+                  <div className="absolute -bottom-2 left-1/2 transform -translate-x-1/2 bg-black text-white text-xs py-1 px-2 rounded opacity-0 group-hover:opacity-100 transition-opacity duration-300 whitespace-nowrap">
+                    Klik untuk melihat foto
+                  </div>
+                </motion.div>
+              ) : (
+                <div className={`text-center p-8 rounded-lg border-2 border-dashed ${
+                  isDarkMode ? 'border-slate-600 text-slate-400' : 'border-gray-300 text-gray-500'
+                }`}>
+                  <Package size={48} className="mx-auto mb-2 opacity-50" />
+                  <p className="italic">Tidak ada foto</p>
+                </div>
+              )}
+              
+              {/* Quick Stats */}
+              <div className="grid grid-cols-2 gap-4 mt-6">
+                <div className={`text-center p-3 rounded-lg ${
+                  isDarkMode ? "bg-slate-700" : "bg-gray-100"
+                }`}>
+                  <p className={`text-sm ${
+                    isDarkMode ? "text-slate-400" : "text-gray-600"
+                  }`}>Total Unit</p>
+                  <p className={`text-xl font-bold ${
+                    isDarkMode ? "text-white" : "text-gray-800"
+                  }`}>{barang.stok?.length || 0}</p>
+                </div>
+                <div className={`text-center p-3 rounded-lg ${
+                  isDarkMode ? "bg-slate-700" : "bg-gray-100"
+                }`}>
+                  <p className={`text-sm ${
+                    isDarkMode ? "text-slate-400" : "text-gray-600"
+                  }`}>Tersedia</p>
+                  <p className={`text-xl font-bold ${
+                    isDarkMode ? "text-green-400" : "text-green-600"
+                  }`}>
+                    {barang.stok?.filter(unit => unit.status === "Tersedia").length || 0}
+                  </p>
+                </div>
+              </div>
+            </div>
+
+            {/* Product Details Card */}
+            <div className={`rounded-xl p-6 ${
+              isDarkMode ? "bg-slate-800" : "bg-white"
+            } shadow-sm`}>
+              <h3 className={`text-lg font-semibold mb-4 flex items-center gap-2 ${
+                isDarkMode ? "text-white" : "text-gray-800"
+              }`}>
+                <Info size={20} className={isDarkMode ? "text-blue-400" : "text-blue-600"} />
+                Informasi Barang
+              </h3>
+              
+              <div className="space-y-4">
+                <div>
+                  <label className={`text-sm font-medium ${
+                    isDarkMode ? "text-slate-400" : "text-gray-600"
+                  }`}>Nama Barang</label>
+                  <p className={`font-semibold mt-1 ${
+                    isDarkMode ? "text-white" : "text-gray-800"
+                  }`}>{barang.nama_barang || "-"}</p>
+                </div>
+
+                <div>
+                  <label className={`text-sm font-medium ${
+                    isDarkMode ? "text-slate-400" : "text-gray-600"
+                  }`}>Kategori</label>
+                  <p className={`font-semibold mt-1 ${
+                    isDarkMode ? "text-white" : "text-gray-800"
+                  }`}>{barang.kategori || "-"}</p>
+                </div>
+
+                <div>
+                  <label className={`text-sm font-medium ${
+                    isDarkMode ? "text-slate-400" : "text-gray-600"
+                  }`}>Tahun Perolehan</label>
+                  <p className={`font-semibold mt-1 ${
+                    isDarkMode ? "text-white" : "text-gray-800"
+                  }`}>{barang.tahun_perolehan || "-"}</p>
+                </div>
+
+                <div>
+                  <label className={`text-sm font-medium ${
+                    isDarkMode ? "text-slate-400" : "text-gray-600"
+                  }`}>Deskripsi</label>
+                  <p className={`mt-1 ${
+                    isDarkMode ? "text-slate-300" : "text-gray-700"
+                  }`}>{barang.deskripsi || "Tidak ada deskripsi"}</p>
+                </div>
+              </div>
+            </div>
+          </div>
+
+          {/* Right Column - Unit List */}
+          <div className="lg:col-span-2">
+            <div className={`rounded-xl p-6 ${
+              isDarkMode ? "bg-slate-800" : "bg-white"
+            } shadow-sm`}>
+              <div className="flex justify-between items-center mb-6">
+                <h3 className={`text-lg font-semibold ${
+                  isDarkMode ? "text-white" : "text-gray-800"
+                }`}>
+                  Daftar Unit Barang
+                </h3>
+                {barang.stok?.length > 0 && (
+                  <motion.button
+                    whileHover={{ scale: 1.05 }}
+                    whileTap={{ scale: 0.95 }}
+                    onClick={handleDeleteSelected}
+                    className={`px-4 py-2 rounded-lg text-sm ${
+                      selectedUnits.length > 0
+                        ? isDarkMode 
+                          ? "bg-red-600 hover:bg-red-700 text-white" 
+                          : "bg-red-600 hover:bg-red-700 text-white"
+                        : isDarkMode 
+                          ? "bg-slate-700 text-slate-400 cursor-not-allowed" 
+                          : "bg-gray-200 text-gray-400 cursor-not-allowed"
+                    }`}
+                    disabled={selectedUnits.length === 0}
+                  >
+                    <Trash2 size={16} className="inline mr-1" />
+                    Hapus Terpilih ({selectedUnits.length})
+                  </motion.button>
+                )}
+              </div>
+
+              {barang.stok && barang.stok.length > 0 ? (
+                <div className="overflow-x-auto">
+                  <table className="w-full">
+                    <thead>
+                      <tr className={`border-b ${
+                        isDarkMode ? "border-slate-700" : "border-gray-200"
+                      }`}>
+                        <th className="px-4 py-3 text-left w-12">
+                          <input
+                            type="checkbox"
+                            checked={selectedUnits.length === barang.stok.length}
+                            onChange={toggleSelectAll}
+                            className={isDarkMode ? "accent-blue-500" : ""}
+                          />
+                        </th>
+                        <th className={`px-4 py-3 text-left text-sm font-medium ${
+                          isDarkMode ? "text-slate-400" : "text-gray-600"
+                        }`}>Kode Unit</th>
+                        <th className={`px-4 py-3 text-left text-sm font-medium ${
+                          isDarkMode ? "text-slate-400" : "text-gray-600"
+                        }`}>Kondisi</th>
+                        <th className={`px-4 py-3 text-left text-sm font-medium ${
+                          isDarkMode ? "text-slate-400" : "text-gray-600"
+                        }`}>Status</th>
+                        <th className={`px-4 py-3 text-right text-sm font-medium ${
+                          isDarkMode ? "text-slate-400" : "text-gray-600"
+                        }`}>Aksi</th>
+                      </tr>
+                    </thead>
+                    <tbody>
+                      {barang.stok.map((unit, index) => (
+                        <tr 
+                          key={unit.kode || index} 
+                          className={`border-b ${
+                            isDarkMode 
+                              ? "border-slate-700 hover:bg-slate-750" 
+                              : "border-gray-200 hover:bg-gray-50"
+                          } transition-colors`}
+                        >
+                          <td className="px-4 py-3">
+                            <input
+                              type="checkbox"
+                              checked={selectedUnits.includes(unit.kode)}
+                              onChange={() => toggleSelectUnit(unit.kode)}
+                              className={isDarkMode ? "accent-blue-500" : ""}
+                            />
+                          </td>
+                          <td className={`px-4 py-3 font-medium ${
+                            isDarkMode ? "text-white" : "text-gray-800"
+                          }`}>
+                            {unit.kode || `Unit #${index + 1}`}
+                          </td>
+                          <td className="px-4 py-3">
+                            <div className="flex items-center gap-2">
+                              {getConditionIcon(unit.kondisi)}
+                              <span className={`text-sm ${
+                                isDarkMode ? "text-slate-300" : "text-gray-700"
+                              }`}>
+                                {unit.kondisi || "-"}
+                              </span>
+                            </div>
+                          </td>
+                          <td className="px-4 py-3">
+                            <div className="flex items-center gap-2">
+                              {getStatusIcon(unit.status)}
+                              <span className={`text-sm ${
+                                isDarkMode ? "text-slate-300" : "text-gray-700"
+                              }`}>
+                                {unit.status || "-"}
+                              </span>
+                            </div>
+                          </td>
+                          <td className="px-4 py-3 text-right">
+                            <div className="flex justify-end gap-2">
+                              <motion.button
+                                whileHover={{ scale: 1.05 }}
+                                whileTap={{ scale: 0.95 }}
+                                onClick={() => navigate(`/barang/${barang.id}/stok/${unit.kode}/edit`)}
+                                className={`p-2 rounded-lg ${
+                                  isDarkMode 
+                                    ? "bg-blue-600 hover:bg-blue-700" 
+                                    : "bg-blue-600 hover:bg-blue-700"
+                                } text-white`}
+                                title="Edit Unit"
+                              >
+                                <Edit3 size={14} />
+                              </motion.button>
+                              <motion.button
+                                whileHover={{ scale: 1.05 }}
+                                whileTap={{ scale: 0.95 }}
+                                onClick={() => handleDeleteUnit(unit.kode)}
+                                className={`p-2 rounded-lg ${
+                                  isDarkMode 
+                                    ? "bg-red-600 hover:bg-red-700" 
+                                    : "bg-red-600 hover:bg-red-700"
+                                } text-white`}
+                                title="Hapus Unit"
+                              >
+                                <Trash2 size={14} />
+                              </motion.button>
+                            </div>
+                          </td>
+                        </tr>
+                      ))}
+                    </tbody>
+                  </table>
+                </div>
+              ) : (
+                <div className={`text-center py-12 ${
+                  isDarkMode ? "text-slate-400" : "text-gray-500"
+                }`}>
+                  <Package size={48} className="mx-auto mb-4 opacity-50" />
+                  <p>Belum ada unit barang terdaftar</p>
+                </div>
+              )}
+            </div>
+          </div>
+        </div>
+      </div>
+
+      {/* Modal untuk menampilkan gambar secara full - Menggunakan AnimatePresence seperti di KelolaProfile */}
+      <AnimatePresence>
+        {showImageModal && barang.foto && (
+          <motion.div
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            exit={{ opacity: 0 }}
+            className="fixed inset-0 bg-black/90 z-50 flex items-center justify-center p-4"
+            onClick={closeImageModal}
+          >
+            <motion.div
+              initial={{ scale: 0.8, opacity: 0 }}
+              animate={{ scale: 1, opacity: 1 }}
+              exit={{ scale: 0.8, opacity: 0 }}
+              className="relative max-w-4xl max-h-full"
+              onClick={(e) => e.stopPropagation()}
+            >
+              {/* Tombol close */}
+              <motion.button
+                whileHover={{ scale: 1.1 }}
+                whileTap={{ scale: 0.9 }}
+                onClick={closeImageModal}
+                className="absolute -top-12 right-0 p-2 text-white hover:text-gray-300 transition-colors z-10"
+              >
+                <X size={24} />
+              </motion.button>
+              
+              {/* Gambar */}
+              <img
                 src={`http://localhost:8000/uploads/${barang.foto}`}
                 alt={barang.nama_barang}
-                className="rounded-xl shadow-lg max-w-[280px] w-full object-cover border border-gray-200"
+                className="max-w-full max-h-[80vh] object-contain rounded-lg"
                 onError={(e) => {
                   e.target.onerror = null;
                   e.target.src = "/default-image.png";
                 }}
               />
-            ) : (
-              <div className="text-gray-500 text-center italic">
-                📷 Tidak ada foto
+              
+              {/* Caption */}
+              <div className="text-center mt-4">
+                <p className="text-white text-lg font-medium">{barang.nama_barang}</p>
+                <p className="text-gray-400 text-sm">Klik di luar gambar untuk menutup</p>
               </div>
-            )}
-          </div>
-
-          {/* Detail */}
-          <div className="text-gray-800 text-base font-medium flex-1 space-y-4">
-            <p>
-              <span className="font-semibold">📦 Nama Barang:</span>{" "}
-              {barang.nama_barang || "-"}
-            </p>
-            <p>
-              <span className="font-semibold">📂 Kategori:</span>{" "}
-              {barang.kategori || "-"}
-            </p>
-            <p>
-              <span className="font-semibold">📅 Tahun Perolehan:</span>{" "}
-              {barang.tahun_perolehan || "2025"}
-            </p>
-            <p>
-              <span className="font-semibold">📦 Jumlah Unit:</span>{" "}
-              {barang.stok?.length ?? 0}
-            </p>
-            <p>
-              <span className="font-semibold">📑 Deskripsi:</span>{" "}
-              {barang.deskripsi || "-"}
-            </p>
-          </div>
-        </div>
-
-        {/* Daftar Unit */}
-        <div className="mt-12">
-          <div className="flex justify-between items-center mb-4">
-            <h3 className="text-2xl font-semibold text-gray-800">
-              Daftar Unit Barang
-            </h3>
-            {barang.stok?.length > 0 && (
-              <motion.button
-                whileHover={{ scale: 1.05 }}
-                whileTap={{ scale: 0.95 }}
-                onClick={handleDeleteSelected}
-                className="bg-red-600 hover:bg-red-700 text-white px-4 py-2 rounded shadow text-sm"
-              >
-                🗑️ Hapus Terpilih
-              </motion.button>
-            )}
-          </div>
-
-          {barang.stok && barang.stok.length > 0 ? (
-            <div className="overflow-x-auto">
-              <table className="w-full border-collapse border border-gray-300 text-sm">
-                <thead>
-                  <tr className="bg-gray-100">
-                    <th className="border border-gray-300 px-3 py-2 text-center">
-                      <input
-                        type="checkbox"
-                        checked={selectedUnits.length === barang.stok.length}
-                        onChange={toggleSelectAll}
-                      />
-                    </th>
-                    <th className="border border-gray-300 px-3 py-2 text-left">
-                      Kode
-                    </th>
-                    <th className="border border-gray-300 px-3 py-2 text-left">
-                      Kondisi
-                    </th>
-                    <th className="border border-gray-300 px-3 py-2 text-left">
-                      Status
-                    </th>
-                    <th className="border border-gray-300 px-3 py-2 text-center">
-                      Aksi
-                    </th>
-                  </tr>
-                </thead>
-                <tbody>
-                  {barang.stok.map((unit, index) => (
-                    <tr key={unit.kode || index} className="hover:bg-gray-50">
-                      <td className="border border-gray-300 px-3 py-2 text-center">
-                        <input
-                          type="checkbox"
-                          checked={selectedUnits.includes(unit.kode)}
-                          onChange={() => toggleSelectUnit(unit.kode)}
-                        />
-                      </td>
-                      <td className="border border-gray-300 px-3 py-2">
-                        {unit.kode || `Unit #${index + 1}`}
-                      </td>
-                      <td className="border border-gray-300 px-3 py-2">
-                        <span
-                          className={`px-2 py-1 rounded text-white text-xs ${
-                            unit.kondisi === "Baik"
-                              ? "bg-green-500"
-                              : unit.kondisi?.includes("Kurang")
-                              ? "bg-yellow-500"
-                              : unit.kondisi?.includes("Rusak")
-                              ? "bg-red-500"
-                              : "bg-gray-400"
-                          }`}
-                        >
-                          {unit.kondisi || "-"}
-                        </span>
-                      </td>
-                      <td className="border border-gray-300 px-3 py-2">
-                        <span
-                          className={`px-2 py-1 rounded text-white text-xs ${
-                            unit.status === "Tersedia"
-                              ? "bg-green-600"
-                              : unit.status === "Dipinjam"
-                              ? "bg-blue-500"
-                              : "bg-orange-500"
-                          }`}
-                        >
-                          {unit.status || "-"}
-                        </span>
-                      </td>
-                      <td className="border border-gray-300 px-3 py-2 text-center space-x-2">
-                        <motion.button
-                          whileHover={{ scale: 1.05 }}
-                          whileTap={{ scale: 0.95 }}
-                          onClick={() =>
-                            navigate(
-                              `/barang/${barang.id}/stok/${unit.kode}/edit`
-                            )
-                          }
-                          className="bg-yellow-500 hover:bg-yellow-600 text-white px-3 py-1 rounded shadow text-xs"
-                        >
-                          ✏️ Edit
-                        </motion.button>
-                        <motion.button
-                          whileHover={{ scale: 1.05 }}
-                          whileTap={{ scale: 0.95 }}
-                          onClick={() => handleDeleteUnit(unit.kode)}
-                          className="bg-red-600 hover:bg-red-700 text-white px-3 py-1 rounded shadow text-xs"
-                        >
-                          🗑️ Hapus
-                        </motion.button>
-                      </td>
-                    </tr>
-                  ))}
-                </tbody>
-              </table>
-            </div>
-          ) : (
-            <p className="text-gray-500 text-center">
-              Belum ada detail unit barang.
-            </p>
-          )}
-        </div>
-      </motion.div>
+            </motion.div>
+          </motion.div>
+        )}
+      </AnimatePresence>
     </div>
   );
 }

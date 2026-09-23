@@ -71,7 +71,7 @@
       }
     ],
     "deskripsi": "Untuk bermain olahraga badminton",
-    "foto": "How_to_choose_the_best_badminton_shuttlecock_.jpeg",
+    "foto": "Premium_Goose_Feather_Badminton_Shuttlecock_for_.jpg",
     "tahun_perolehan": 2023
   },
   {
@@ -197,7 +197,7 @@
       },
       {
         "kode": "PROYEK-004",
-        "kondisi": "Rusak",
+        "kondisi": "Baik",
         "status": "Tersedia"
       },
       {
@@ -212,6 +212,16 @@
       },
       {
         "kode": "PROYEK-007",
+        "kondisi": "Baik",
+        "status": "Tersedia"
+      },
+      {
+        "kode": "PROYEK-008",
+        "kondisi": "Baik",
+        "status": "Tersedia"
+      },
+      {
+        "kode": "PROYEK-009",
         "kondisi": "Baik",
         "status": "Tersedia"
       }
@@ -232,21 +242,6 @@
       },
       {
         "kode": "BOLFUT-002",
-        "kondisi": "Baik",
-        "status": "Tersedia"
-      },
-      {
-        "kode": "BOLFUT-003",
-        "kondisi": "Baik",
-        "status": "Tersedia"
-      },
-      {
-        "kode": "BOLFUT-004",
-        "kondisi": "Baik",
-        "status": "Tersedia"
-      },
-      {
-        "kode": "BOLFUT-005",
         "kondisi": "Baik",
         "status": "Tersedia"
       }
@@ -337,7 +332,7 @@
       },
       {
         "kode": "KAMERA-003",
-        "kondisi": "Baik",
+        "kondisi": "Rusak",
         "status": "Tersedia"
       }
     ],
@@ -368,7 +363,7 @@
       {
         "kode": "RANSEL-004",
         "kondisi": "Baik",
-        "status": "Tersedia"
+        "status": "Dipinjam"
       },
       {
         "kode": "RANSEL-005",
@@ -554,16 +549,6 @@
         "kode": "JAMTAN-003",
         "kondisi": "Baik",
         "status": "Tersedia"
-      },
-      {
-        "kode": "JAMTAN-004",
-        "kondisi": "Baik",
-        "status": "Dipinjam"
-      },
-      {
-        "kode": "JAMTAN-005",
-        "kondisi": "Baik",
-        "status": "Tersedia"
       }
     ],
     "deskripsi": "Untuk kebutuhan karyawan",
@@ -588,5 +573,30 @@
     ],
     "deskripsi": "Untuk kebutuhan karyawan",
     "foto": "46e4b7b5-bb27-46ba-b743-938fc0a59013.jpg"
+  },
+  {
+    "id": 31,
+    "nama_barang": "Jas Kantor",
+    "kategori": "Aksesoris",
+    "tahun_perolehan": 2024,
+    "stok": [
+      {
+        "kode": "JASKAN-001",
+        "kondisi": "Baik",
+        "status": "Tersedia"
+      },
+      {
+        "kode": "JASKAN-002",
+        "kondisi": "Baik",
+        "status": "Tersedia"
+      },
+      {
+        "kode": "JASKAN-003",
+        "kondisi": "Baik",
+        "status": "Tersedia"
+      }
+    ],
+    "deskripsi": "Untuk karyawan",
+    "foto": "Pin_on_Whatsapp_status_for_girls.jpg"
   }
 ]

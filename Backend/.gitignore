@@ -1,25 +1,5 @@
-# Node modules
-node_modules/
-
-# Environment files
+# Python 
+__pycache__/ 
+*.pyc 
+venv/ 
 .env
-
-# Logs
-logs
-*.log
-
-# Database dumps
-*.sql
-*.db
-
-# OS files
-.DS_Store
-Thumbs.db
-
-# Build output
-dist/
-build/
-
-# IDE / Editor
-.vscode/
-.idea/

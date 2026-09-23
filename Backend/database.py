@@ -1,20 +1,30 @@
-from sqlalchemy import create_engine
-from sqlalchemy.ext.declarative import declarative_base
-from sqlalchemy.orm import sessionmaker
+import os
+import mysql.connector
+from mysql.connector import Error
+from dotenv import load_dotenv
+import logging
 
-SQLALCHEMY_DATABASE_URL = "sqlite:///./data.db"  # atau sesuai path-mu
+logger = logging.getLogger(__name__)
+load_dotenv()
 
-engine = create_engine(
-    SQLALCHEMY_DATABASE_URL, connect_args={"check_same_thread": False}
-)
-SessionLocal = sessionmaker(autocommit=False, autoflush=False, bind=engine)
+class Database:
+    def __init__(self):
+        self.config = {
+            'host': os.getenv('DB_HOST', 'localhost'),
+            'user': os.getenv('DB_USER', 'root'),
+            'password': os.getenv('DB_PASSWORD', ''),
+            'database': os.getenv('DB_NAME', 'inventory_db'),
+            'port': int(os.getenv('DB_PORT', 3306)),
+            'charset': 'utf8mb4',
+            'autocommit': False
+        }
+    
+    def get_connection(self):
+        try:
+            connection = mysql.connector.connect(**self.config)
+            return connection
+        except Error as e:
+            logger.error(f"Error connecting to MySQL: {e}")
+            raise Exception("Database connection failed")
 
-Base = declarative_base()
-
-# ✅ Inilah yang penting!
-def get_db():
-    db = SessionLocal()
-    try:
-        yield db
-    finally:
-        db.close()
+db = Database()
